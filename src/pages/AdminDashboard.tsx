@@ -808,6 +808,9 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               )}
+              {!dataLoading && filteredCandidates.length > 0 && (
+                <Pager total={filteredCandidates.length} page={currentCandidatePage} onChange={setCandidatePage} />
+              )}
             </div>
           )}
 
