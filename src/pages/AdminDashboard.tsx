@@ -359,6 +359,43 @@ export default function AdminDashboard() {
     return (j.title?.toLowerCase().includes(q) || j.company?.toLowerCase().includes(q));
   });
 
+  // ─── Pagination slices (pages are clamped so deletions never leave an empty page) ───
+  const candidateTotalPages = Math.max(1, Math.ceil(filteredCandidates.length / PAGE_SIZE));
+  const currentCandidatePage = Math.min(candidatePage, candidateTotalPages);
+  const pagedCandidates = filteredCandidates.slice((currentCandidatePage - 1) * PAGE_SIZE, currentCandidatePage * PAGE_SIZE);
+  const jobTotalPages = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
+  const currentJobPage = Math.min(jobPage, jobTotalPages);
+  const pagedJobs = filteredJobs.slice((currentJobPage - 1) * PAGE_SIZE, currentJobPage * PAGE_SIZE);
+
+  // ─── Analytics (Overview charts) ───
+  const toChartDate = (t: any): Date | null => (t?.toDate ? t.toDate() : (t ? new Date(t) : null));
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const applicationsPerMonth = Array.from({ length: 6 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - (5 - i));
+    const key = monthKey(d);
+    return {
+      month: d.toLocaleDateString('en-US', { month: 'short' }),
+      applications: candidates.filter(c => {
+        const t = toChartDate(c.createdAt);
+        return t ? monthKey(t) === key : false;
+      }).length,
+    };
+  });
+  const statusBreakdown = ['pending', 'accepted', 'rejected'].map(s => ({
+    name: s.charAt(0).toUpperCase() + s.slice(1),
+    value: candidates.filter(c => c.status === s).length,
+  })).filter(entry => entry.value > 0);
+  const STATUS_COLORS: Record<string, string> = { Pending: '#F59E0B', Accepted: '#10B981', Rejected: '#F43F5E' };
+  const jobsByCategory = Object.entries(
+    adminJobs.reduce((acc: Record<string, number>, j: any) => {
+      const cat = j.category || 'Other';
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([name, count]) => ({ name, count }));
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
