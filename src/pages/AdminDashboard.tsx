@@ -17,6 +17,10 @@ import {
 } from '../lib/db';
 import { db } from '../lib/firebase';
 import { updateDoc, doc } from 'firebase/firestore';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 import CMSAdmin from '../components/CMSAdmin';
 

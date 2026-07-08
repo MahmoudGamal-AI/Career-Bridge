@@ -15,6 +15,11 @@ export default function UploadCVPage() {
   const initialJobId = searchParams.get('jobId') || "";
   const initialJobTitle = searchParams.get('jobTitle') || "";
 
+  usePageMeta(
+    initialJobTitle ? `Apply for ${initialJobTitle} | Career Bridge` : "Upload Your CV | Career Bridge",
+    "Submit your CV and let Career Bridge connect you with the right opportunities."
+  );
+
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);

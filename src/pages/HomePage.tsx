@@ -11,6 +11,7 @@ import { getJobs, subscribeToCMS } from '../lib/db';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function HomePage() {
+  usePageMeta("Career Bridge | Egypt's HR & Recruitment Platform", "Career Bridge helps job seekers build successful careers and enables companies to hire the right talent faster and smarter.");
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [jobSearch, setJobSearch] = useState("");

@@ -1,24 +1,31 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
   getUserCandidates,
   getUserMessages,
   getUserConsultations,
   getUserCompanyRequests,
+  getJobsByIds,
 } from "../lib/db";
-import { FileText, MessageSquare, Briefcase, Calendar, Clock, CheckCircle, XCircle } from "lucide-react";
+import { useSavedJobs } from "../hooks/useSavedJobs";
+import { usePageMeta } from "../hooks/usePageMeta";
+import { FileText, MessageSquare, Briefcase, Calendar, Clock, CheckCircle, XCircle, Bookmark, MapPin } from "lucide-react";
 
 export default function DashboardPage() {
-  const { currentUser, userRole } = useAuth();
+  usePageMeta("My Dashboard | Career Bridge", "Track your job applications, saved jobs, requests, and messages.");
+  const { currentUser } = useAuth();
+  const { savedJobIds, toggleSaved } = useSavedJobs();
   const [candidates, setCandidates] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [consultations, setConsultations] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [savedJobs, setSavedJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!currentUser) return;
-    
+
     async function loadData() {
       try {
         const [cands, msgs, cons, comps] = await Promise.all([
@@ -37,9 +44,20 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
-    
+
     loadData();
   }, [currentUser]);
+
+  // Saved jobs are read by ID from the user's savedJobs field (rules-compatible)
+  useEffect(() => {
+    if (savedJobIds.length === 0) {
+      setSavedJobs([]);
+      return;
+    }
+    getJobsByIds(savedJobIds)
+      .then(setSavedJobs)
+      .catch(err => console.error("Error loading saved jobs", err));
+  }, [savedJobIds]);
 
   if (!currentUser) {
     return (
@@ -49,8 +67,13 @@ export default function DashboardPage() {
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+  const formatDate = (createdAt: any) => {
+    if (!createdAt?.seconds) return "";
+    return new Date(createdAt.seconds * 1000).toLocaleDateString();
+  };
+
+  const getStatusColor = (status?: string) => {
+    switch ((status || "pending").toLowerCase()) {
       case "accepted":
       case "confirmed":
       case "published":
@@ -66,8 +89,8 @@ export default function DashboardPage() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusIcon = (status?: string) => {
+    switch ((status || "pending").toLowerCase()) {
       case "accepted":
       case "confirmed":
       case "published":
@@ -96,7 +119,40 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-12">
-          
+
+          {/* Saved Jobs */}
+          {savedJobs.length > 0 && (
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <Bookmark className="w-5 h-5 text-[#F59E0B]" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Saved Jobs</h2>
+              </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {savedJobs.map(job => (
+                  <div key={job.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all">
+                    <h3 className="font-bold text-lg text-gray-900">{job.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{job.company}</p>
+                    {job.location && (
+                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#0F4C81]" /> {job.location}
+                      </p>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      <Link to={`/jobs/${job.id}`} className="flex-1 text-center text-sm font-semibold bg-[#0F4C81] text-white py-2 rounded-xl hover:bg-[#0A3860] transition-colors">
+                        View Job
+                      </Link>
+                      <button onClick={() => toggleSaved(job.id)} className="text-sm font-semibold text-red-600 bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition-colors">
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Candidates / Job Applications */}
           {candidates.length > 0 && (
             <section>
@@ -110,10 +166,10 @@ export default function DashboardPage() {
                 {candidates.map(c => (
                   <div key={c.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all">
                     <h3 className="font-bold text-lg text-gray-900">{c.jobTitle || "General Application"}</h3>
-                    <p className="text-sm text-gray-500 mt-1 mb-4">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-500 mt-1 mb-4">{formatDate(c.createdAt)}</p>
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(c.status)}`}>
                       {getStatusIcon(c.status)}
-                      {c.status.toUpperCase()}
+                      {(c.status || "pending").toUpperCase()}
                     </div>
                     {c.feedback && (
                       <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100">
@@ -141,10 +197,10 @@ export default function DashboardPage() {
                   <div key={c.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all">
                     <h3 className="font-bold text-lg text-gray-900">{c.jobTitle}</h3>
                     <p className="text-sm text-gray-600 mt-1">{c.company}</p>
-                    <p className="text-sm text-gray-500 mb-4">{new Date(c.createdAt?.seconds * 1000).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-500 mb-4">{formatDate(c.createdAt)}</p>
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(c.status)}`}>
                       {getStatusIcon(c.status)}
-                      {c.status.toUpperCase()}
+                      {(c.status || "pending").toUpperCase()}
                     </div>
                   </div>
                 ))}
@@ -169,7 +225,7 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-500 mb-4">{c.meeting === "online" ? "Online via Zoom" : "In-Person, Cairo"}</p>
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(c.status)}`}>
                       {getStatusIcon(c.status)}
-                      {c.status.toUpperCase()}
+                      {(c.status || "pending").toUpperCase()}
                     </div>
                   </div>
                 ))}
@@ -190,10 +246,10 @@ export default function DashboardPage() {
                 {messages.map(m => (
                   <div key={m.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all">
                     <h3 className="font-bold text-lg text-gray-900">{m.subject}</h3>
-                    <p className="text-sm text-gray-500 mt-1 mb-4">{new Date(m.createdAt?.seconds * 1000).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-500 mt-1 mb-4">{formatDate(m.createdAt)}</p>
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(m.status)}`}>
                       {getStatusIcon(m.status)}
-                      {m.status.toUpperCase()}
+                      {(m.status || "pending").toUpperCase()}
                     </div>
                   </div>
                 ))}
@@ -201,7 +257,7 @@ export default function DashboardPage() {
             </section>
           )}
 
-          {candidates.length === 0 && companies.length === 0 && consultations.length === 0 && messages.length === 0 && (
+          {candidates.length === 0 && companies.length === 0 && consultations.length === 0 && messages.length === 0 && savedJobs.length === 0 && (
             <div className="text-center py-20 bg-gray-50 rounded-3xl border border-gray-200">
               <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <FileText className="w-10 h-10 text-gray-400" />
