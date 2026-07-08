@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "faalkher"
+  },
+  "targets": {
+    "faalkher": {
+      "hosting": {
+        "main": [
+          "find-your-job-faalkher"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

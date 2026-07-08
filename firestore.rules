@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /users/{userId} {
+      // Users can read and update their own profile, admins can read all
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // Only the user can create their own profile. They cannot assign themselves the 'admin' role unless their email matches the designated admin.
+      allow create: if request.auth != null && request.auth.uid == userId && (request.resource.data.role != 'admin' || request.auth.token.email == 'mahmoudgamal442004@gmail.com' || request.auth.token.email == 'adham@123365.com');
+      
+      allow update: if request.auth != null && (
+        isAdmin() || 
+        (request.auth.uid == userId && (request.resource.data.role == resource.data.role || request.auth.token.email == 'mahmoudgamal442004@gmail.com' || request.auth.token.email == 'adham@123365.com'))
+      );
+      allow delete: if isAdmin();
+    }
+    
+    match /jobs/{jobId} {
+      // Anyone can read open jobs
+      allow read: if true;
+      // Only admins can manage jobs
+      allow write: if isAdmin();
+    }
+
+    match /candidates/{candidateId} {
+      // Admins can read all, users can read their own
+      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      // Only authenticated users can submit their own data
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid; 
+      allow update, delete: if isAdmin();
+    }
+
+    match /companies/{companyId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    
+    match /messages/{messageId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /consultations/{consultationId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // CMS Collections (Dynamic Content)
+    match /stats/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /services_individuals/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /services_companies/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /testimonials/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /faqs/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /steps/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

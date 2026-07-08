@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    match /cvs/{fileName} {
+      // Only authenticated users can upload a CV (max 10MB)
+      allow create: if request.auth != null && request.resource.size < 10 * 1024 * 1024;
+      
+      // Allow read so that getDownloadURL() succeeds right after upload for unauthenticated users.
+      // (File names are obfuscated with timestamps making them hard to guess)
+      allow read: if true;
+      
+      // Only authenticated users can delete
+      allow update, delete: if request.auth != null;
+    }
+  }
+}
