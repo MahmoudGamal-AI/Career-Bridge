@@ -106,6 +106,10 @@ export default function AdminDashboard() {
   const [jobSearch, setJobSearch] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
 
+  // Table pagination state
+  const [candidatePage, setCandidatePage] = useState(1);
+  const [jobPage, setJobPage] = useState(1);
+
   // Job form modal
   const [showJobModal, setShowJobModal] = useState(false);
   const [editingJob, setEditingJob] = useState<any>(null);
