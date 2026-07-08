@@ -58,6 +58,35 @@ function EmptyState({ icon: Icon, title, description }: { icon: any; title: stri
   );
 }
 
+// ─── Pagination ───
+const PAGE_SIZE = 10;
+
+function Pager({ total, page, onChange }: { total: number; page: number; onChange: (p: number) => void }) {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-[#F8FAFC]">
+      <p className="text-xs text-gray-500 font-medium">Page {page} of {totalPages} · {total} items</p>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onChange(Math.max(1, page - 1))}
+          disabled={page <= 1}
+          className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Previous
+        </button>
+        <button
+          onClick={() => onChange(Math.min(totalPages, page + 1))}
+          disabled={page >= totalPages}
+          className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { currentUser, userRole, loading: authLoading, loginWithEmail, logout } = useAuth();

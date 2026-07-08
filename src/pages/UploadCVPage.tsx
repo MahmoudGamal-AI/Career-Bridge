@@ -70,8 +70,11 @@ export default function UploadCVPage() {
       try {
         cvUrl = await uploadCV(file!);
       } catch (uploadError) {
-        console.warn("Storage upload failed, saving without file.", uploadError);
-        toast.warning("CV file couldn't be uploaded, but your application was saved.");
+        // Do NOT save the application without its CV file — a record with an
+        // empty cvUrl is useless to reviewers. Let the user retry instead.
+        console.error("Storage upload failed:", uploadError);
+        toast.error("We couldn't upload your CV file. Please check your connection and try again.");
+        return;
       }
       await addCandidate({
         ...form,

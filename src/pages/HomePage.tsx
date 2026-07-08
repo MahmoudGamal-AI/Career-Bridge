@@ -379,12 +379,20 @@ export default function HomePage() {
                       )}
                     </div>
 
-                    <button
-                      onClick={() => navigate('/upload-cv')}
-                      className="w-full bg-[#EBF4FF] group-hover:bg-[#0F4C81] text-[#0F4C81] group-hover:text-white text-sm font-semibold py-2.5 rounded-xl transition-all"
-                    >
-                      Apply Now
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => navigate(`/jobs/${job.id}`)}
+                        className="flex-1 bg-white border border-[#0F4C81]/20 text-[#0F4C81] text-sm font-semibold py-2.5 rounded-xl hover:bg-blue-50 transition-all"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() => navigate(`/upload-cv?jobId=${job.id}&jobTitle=${encodeURIComponent(job.title || '')}`)}
+                        className="flex-1 bg-[#EBF4FF] group-hover:bg-[#0F4C81] text-[#0F4C81] group-hover:text-white text-sm font-semibold py-2.5 rounded-xl transition-all"
+                      >
+                        Apply Now
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
