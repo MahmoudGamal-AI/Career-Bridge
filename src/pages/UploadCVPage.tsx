@@ -6,6 +6,7 @@ import {
 import { toast } from "sonner";
 import { addCandidate, uploadCV } from '../lib/db';
 import { useAuth } from '../contexts/AuthContext';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function UploadCVPage() {
   const { currentUser } = useAuth();

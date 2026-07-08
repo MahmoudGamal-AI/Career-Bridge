@@ -8,7 +8,7 @@ import {
 
 import StatCounter from '../components/common/StatCounter';
 import { getJobs, subscribeToCMS } from '../lib/db';
-import Footer from '../components/layout/Footer';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function HomePage() {
   const navigate = useNavigate();

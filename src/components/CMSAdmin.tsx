@@ -28,7 +28,7 @@ export default function CMSAdmin() {
       toast.success("Default content seeded successfully!");
     } catch (e) {
       console.error(e);
-      toast.error("Failed to seed content.");
+      toast.error(e instanceof Error ? e.message : "Failed to seed content.");
     }
   };
 
@@ -42,13 +42,34 @@ export default function CMSAdmin() {
     }
   };
 
+  // Required fields per tab so incomplete items can never be saved
+  const REQUIRED_FIELDS: Record<string, string[]> = {
+    stats: ["label", "value"],
+    services_individuals: ["title", "desc"],
+    services_companies: ["title", "desc"],
+    testimonials: ["name", "text"],
+    faqs: ["q", "a"],
+    steps: ["num", "title", "desc"],
+  };
+
   const handleSave = async () => {
+    const missing = (REQUIRED_FIELDS[activeTab] || []).filter(
+      f => formData[f] === undefined || formData[f] === null || formData[f] === ""
+    );
+    if (missing.length > 0) {
+      toast.error(`Please fill in the required fields: ${missing.join(", ")}`);
+      return;
+    }
+    // Default "order" to (max existing + 1): the list query is ordered by
+    // "order", so items missing this field would silently disappear.
+    const maxOrder = data.reduce((max, item) => Math.max(max, Number(item.order) || 0), 0);
+    const payload = { ...formData, order: Number(formData.order) > 0 ? Number(formData.order) : maxOrder + 1 };
     try {
       if (isEditing) {
-        await updateCMSItem(activeTab, isEditing, formData);
+        await updateCMSItem(activeTab, isEditing, payload);
         toast.success("Updated successfully");
       } else {
-        await addCMSItem(activeTab, formData);
+        await addCMSItem(activeTab, payload);
         toast.success("Added successfully");
       }
       setIsEditing(null);

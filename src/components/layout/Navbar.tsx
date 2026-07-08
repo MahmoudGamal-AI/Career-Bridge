@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import {
-  Briefcase, Menu, X, Upload, UserPlus, LogIn
+  Briefcase, Menu, X, LogIn
 } from "lucide-react";
 
-import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { NAV_LINKS } from '../../lib/constants';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Navbar() {
-  const { currentUser, userRole, loginWithGoogle, logout } = useAuth();
+  const { currentUser, loginWithGoogle, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
@@ -66,8 +65,11 @@ export default function Navbar() {
           </Link>
           {currentUser ? (
             <div className="flex items-center gap-2 ml-4 border-l border-slate-200 pl-4">
-              <Link to="/dashboard" className="text-sm font-semibold text-gray-700 hover:text-[#0F4C81] px-4 py-2 transition-colors">
+              <Link to="/dashboard" className="text-sm font-semibold text-gray-700 hover:text-[#0F4C81] px-3 py-2 transition-colors">
                 Track Applications
+              </Link>
+              <Link to="/profile" className="text-sm font-semibold text-gray-700 hover:text-[#0F4C81] px-3 py-2 transition-colors">
+                Profile
               </Link>
               <button onClick={logout} className="text-sm font-semibold text-red-600 bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition-colors">
                 Log out
@@ -111,6 +113,7 @@ export default function Navbar() {
             {currentUser ? (
               <>
                 <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="w-full text-center text-sm font-semibold text-gray-700 border border-gray-200 py-2.5 rounded-xl">Track Applications</Link>
+                <Link to="/profile" onClick={() => setMobileOpen(false)} className="w-full text-center text-sm font-semibold text-gray-700 border border-gray-200 py-2.5 rounded-xl">Profile</Link>
                 <button onClick={() => { logout(); setMobileOpen(false); }} className="w-full text-sm font-semibold text-red-600 bg-red-50 py-2.5 rounded-xl">Log out</button>
               </>
             ) : (
@@ -125,4 +128,3 @@ export default function Navbar() {
     </nav>
   );
 }
-

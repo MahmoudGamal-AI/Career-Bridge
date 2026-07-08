@@ -1,18 +1,28 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Briefcase, MapPin, Clock, DollarSign,
-  Search, Filter, ChevronDown, ChevronUp
+  Search, Filter, ChevronDown, ChevronUp,
+  ChevronLeft, ChevronRight, Bookmark
 } from "lucide-react";
 
 import { getJobs } from '../lib/db';
+import { useSavedJobs } from '../hooks/useSavedJobs';
+import { usePageMeta } from '../hooks/usePageMeta';
+
+const JOBS_PER_PAGE = 10;
 
 export default function JobsPage() {
+  usePageMeta("Browse Jobs | Career Bridge", "Discover hundreds of job opportunities across Egypt and the MENA region.");
   const navigate = useNavigate();
+  const { isSaved, toggleSaved } = useSavedJobs();
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("All");
   const [category, setCategory] = useState("All");
   const [type, setType] = useState("All");
+  const [experience, setExperience] = useState("All");
+  const [sortBy, setSortBy] = useState<"newest" | "title">("newest");
+  const [page, setPage] = useState(1);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
@@ -31,20 +41,35 @@ export default function JobsPage() {
     fetchJobs();
   }, []);
 
+  // Reset to the first page whenever a filter or the sort changes
+  useEffect(() => {
+    setPage(1);
+  }, [search, location, category, type, experience, sortBy]);
+
   // Dynamic filter options from actual data
   const locations = ["All", ...new Set(jobs.map(j => j.location).filter(Boolean))];
   const categories = ["All", ...new Set(jobs.map(j => j.category).filter(Boolean))];
   const types = ["All", ...new Set(jobs.map(j => j.type).filter(Boolean))];
+  const experiences = ["All", ...new Set(jobs.map(j => j.experience).filter(Boolean))];
 
-  const filtered = jobs.filter(job => {
-    const q = search.toLowerCase();
-    return (
-      (q === "" || job.title?.toLowerCase().includes(q) || job.company?.toLowerCase().includes(q)) &&
-      (location === "All" || job.location === location) &&
-      (category === "All" || job.category === category) &&
-      (type === "All" || job.type === type)
-    );
-  });
+  const filtered = jobs
+    .filter(job => {
+      const q = search.toLowerCase();
+      return (
+        (q === "" || job.title?.toLowerCase().includes(q) || job.company?.toLowerCase().includes(q)) &&
+        (location === "All" || job.location === location) &&
+        (category === "All" || job.category === category) &&
+        (type === "All" || job.type === type) &&
+        (experience === "All" || job.experience === experience)
+      );
+    })
+    .sort((a, b) => sortBy === "title"
+      ? (a.title || "").localeCompare(b.title || "")
+      : (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / JOBS_PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedJobs = filtered.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE);
 
   return (
     <div className="pt-16">
@@ -78,6 +103,7 @@ export default function JobsPage() {
                 { label: "Location", options: locations, value: location, setter: setLocation, name: "loc" },
                 { label: "Category", options: categories, value: category, setter: setCategory, name: "cat" },
                 { label: "Employment Type", options: types, value: type, setter: setType, name: "typ" },
+                { label: "Experience", options: experiences, value: experience, setter: setExperience, name: "exp" },
               ].map(({ label, options, value, setter, name }) => (
                 <div key={name} className="mb-6">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{label}</p>
@@ -99,10 +125,19 @@ export default function JobsPage() {
           </div>
 
           <div className="flex-1">
-            <div className="mb-5">
+            <div className="mb-5 flex items-center justify-between gap-4">
               <p className="text-sm text-gray-500">
                 <span className="font-bold text-gray-900">{filtered.length}</span> jobs found
               </p>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as "newest" | "title")}
+                className="px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 bg-white focus:outline-none focus:border-[#0F4C81]"
+                aria-label="Sort jobs"
+              >
+                <option value="newest">Newest first</option>
+                <option value="title">Title A–Z</option>
+              </select>
             </div>
 
             {loading ? (
@@ -125,7 +160,7 @@ export default function JobsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filtered.map(job => (
+                {pagedJobs.map(job => (
                   <div
                     key={job.id}
                     className="bg-white border border-gray-100 rounded-2xl p-6 hover:shadow-lg hover:border-blue-100 transition-all flex flex-col gap-4 cursor-pointer"
@@ -147,7 +182,22 @@ export default function JobsPage() {
                           {job.experience && <span className="flex items-center gap-1.5 text-xs text-gray-500"><Clock className="w-3.5 h-3.5 text-gray-400" />{job.experience}</span>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleSaved(job.id); }}
+                          className={`p-2.5 rounded-xl border transition-colors ${isSaved(job.id) ? "bg-amber-50 border-amber-200 text-[#F59E0B]" : "border-gray-200 text-gray-400 hover:text-[#F59E0B] hover:border-amber-200"}`}
+                          title={isSaved(job.id) ? "Remove from saved jobs" : "Save job"}
+                          aria-label={isSaved(job.id) ? "Remove from saved jobs" : "Save job"}
+                        >
+                          <Bookmark className={`w-4 h-4 ${isSaved(job.id) ? "fill-[#F59E0B]" : ""}`} />
+                        </button>
+                        <Link
+                          to={`/jobs/${job.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-sm font-semibold text-[#0F4C81] border border-[#0F4C81]/30 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors whitespace-nowrap"
+                        >
+                          Details
+                        </Link>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -157,12 +207,12 @@ export default function JobsPage() {
                         >
                           Apply Now
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-[#0F4C81] transition-colors">
+                        <button className="p-2 text-gray-400 hover:text-[#0F4C81] transition-colors" aria-label="Toggle job details">
                           {expandedJobId === job.id ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                         </button>
                       </div>
                     </div>
-                    
+
                     {expandedJobId === job.id && (
                       <div className="pt-4 mt-2 border-t border-gray-100 animate-in slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
                         {job.description && (
@@ -195,6 +245,40 @@ export default function JobsPage() {
                         <p className="font-medium text-gray-500">No jobs found. Try adjusting your filters.</p>
                       </>
                     )}
+                  </div>
+                )}
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-6">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage <= 1}
+                      className="flex items-center gap-1 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:border-[#0F4C81] hover:text-[#0F4C81] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Previous
+                    </button>
+                    {totalPages <= 7 ? (
+                      Array.from({ length: totalPages }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setPage(i + 1)}
+                          className={`w-10 h-10 rounded-xl text-sm font-semibold transition-colors ${
+                            currentPage === i + 1 ? "bg-[#0F4C81] text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:border-[#0F4C81] hover:text-[#0F4C81]"
+                          }`}
+                        >
+                          {i + 1}
+                        </button>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500 font-medium px-2">Page {currentPage} of {totalPages}</span>
+                    )}
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage >= totalPages}
+                      className="flex items-center gap-1 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600 hover:border-[#0F4C81] hover:text-[#0F4C81] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
               </div>
