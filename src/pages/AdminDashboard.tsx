@@ -872,6 +872,9 @@ export default function AdminDashboard() {
                     </table>
                   </div>
                 )}
+                {!dataLoading && filteredJobs.length > 0 && (
+                  <Pager total={filteredJobs.length} page={currentJobPage} onChange={setJobPage} />
+                )}
               </div>
 
               {/* Job Modal */}
