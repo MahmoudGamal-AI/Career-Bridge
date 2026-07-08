@@ -820,7 +820,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input type="text" placeholder="Search jobs..." value={jobSearch} onChange={e => setJobSearch(e.target.value)}
+                  <input type="text" placeholder="Search jobs..." value={jobSearch} onChange={e => { setJobSearch(e.target.value); setJobPage(1); }}
                     className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-[#0F4C81] w-56" />
                 </div>
                 <button onClick={() => { resetJobForm(); setShowJobModal(true); }}
