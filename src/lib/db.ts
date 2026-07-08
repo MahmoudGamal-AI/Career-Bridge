@@ -2,14 +2,17 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  getDoc, 
   doc, 
   updateDoc, 
   deleteDoc, 
   query, 
   orderBy, 
   where,
+  limit,
   Timestamp,
   onSnapshot,
+  writeBatch,
   type Unsubscribe
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -22,6 +25,9 @@ export interface CompanyRequest { id?: string; companyName?: string; contactName
 export interface Message { id?: string; name: string; email: string; phone?: string; subject: string; message: string; status?: string; createdAt?: any; userId?: string; }
 export interface Consultation { id?: string; name: string; email: string; phone: string; service: string; message?: string; date?: string; time?: string; meeting?: string; status?: string; createdAt?: any; userId?: string; }
 
+// Safe millis extraction: never returns NaN when createdAt is missing
+const toMillisSafe = (x: any): number => x?.createdAt?.toMillis?.() ?? 0;
+
 // ─── JOBS ───
 export async function getJobs() {
   try {
@@ -32,6 +38,30 @@ export async function getJobs() {
     console.error("🔥 [db.ts] Error getting jobs:", error.message);
     throw error;
   }
+}
+
+export async function getJobById(id: string) {
+  try {
+    const snap = await getDoc(doc(db, 'jobs', id));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() };
+  } catch (error: any) {
+    console.error("🔥 [db.ts] Error getting job by id:", error.message);
+    throw error;
+  }
+}
+
+export async function getJobsByIds(ids: string[]) {
+  const results = await Promise.all(ids.map(async (id) => {
+    try {
+      const snap = await getDoc(doc(db, 'jobs', id));
+      return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    } catch (error: any) {
+      console.error("🔥 [db.ts] Error getting saved job:", error.message);
+      return null;
+    }
+  }));
+  return results.filter((j) => j !== null) as Array<{ id: string } & Record<string, any>>;
 }
 
 export function subscribeToJobs(callback: (jobs: any[]) => void): Unsubscribe {
@@ -320,30 +350,48 @@ export async function deleteCMSItem(collectionName: string, id: string) {
 export async function getUserCandidates(userId: string) {
   const q = query(collection(db, 'candidates'), where('userId', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => toMillisSafe(b) - toMillisSafe(a));
 }
 
 export async function getUserMessages(userId: string) {
   const q = query(collection(db, 'messages'), where('userId', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => toMillisSafe(b) - toMillisSafe(a));
 }
 
 export async function getUserConsultations(userId: string) {
   const q = query(collection(db, 'consultations'), where('userId', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => toMillisSafe(b) - toMillisSafe(a));
 }
 
 export async function getUserCompanyRequests(userId: string) {
   const q = query(collection(db, 'companies'), where('userId', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a: any, b: any) => toMillisSafe(b) - toMillisSafe(a));
 }
 
-import { writeBatch } from 'firebase/firestore';
+async function isCollectionEmpty(name: string): Promise<boolean> {
+  const snap = await getDocs(query(collection(db, name), limit(1)));
+  return snap.empty;
+}
 
+// Idempotent seeding: only collections that are currently EMPTY are seeded,
+// so clicking "Seed Default Content" multiple times never duplicates data.
 export async function seedCMS() {
+  const emptyFlags = {
+    stats: await isCollectionEmpty('stats'),
+    services_individuals: await isCollectionEmpty('services_individuals'),
+    services_companies: await isCollectionEmpty('services_companies'),
+    testimonials: await isCollectionEmpty('testimonials'),
+    faqs: await isCollectionEmpty('faqs'),
+    steps: await isCollectionEmpty('steps'),
+  };
+
+  if (!Object.values(emptyFlags).some(Boolean)) {
+    throw new Error('All CMS collections already contain content. Nothing was seeded.');
+  }
+
   const batch = writeBatch(db);
 
   // 1. STATS
@@ -353,7 +401,7 @@ export async function seedCMS() {
     { value: 150, suffix: "+", label: "Successful Recruitments", iconName: "Briefcase", order: 3 },
     { value: 98, suffix: "%", label: "Client Satisfaction", iconName: "Star", order: 4 },
   ];
-  stats.forEach(item => batch.set(doc(collection(db, 'stats')), { ...item, createdAt: Timestamp.now() }));
+  if (emptyFlags.stats) stats.forEach(item => batch.set(doc(collection(db, 'stats')), { ...item, createdAt: Timestamp.now() }));
 
   // 2. SERVICES_INDIVIDUALS
   const servicesIndiv = [
@@ -364,7 +412,7 @@ export async function seedCMS() {
     { iconName: "Target", title: "Career Coaching", desc: "Personalized one-on-one guidance to help you define goals and navigate your career path.", order: 5 },
     { iconName: "BookOpen", title: "Interview Preparation", desc: "Comprehensive preparation packages covering industry-specific questions and best practices.", order: 6 },
   ];
-  servicesIndiv.forEach(item => batch.set(doc(collection(db, 'services_individuals')), { ...item, createdAt: Timestamp.now() }));
+  if (emptyFlags.services_individuals) servicesIndiv.forEach(item => batch.set(doc(collection(db, 'services_individuals')), { ...item, createdAt: Timestamp.now() }));
 
   // 3. SERVICES_COMPANIES
   const servicesComp = [
@@ -375,7 +423,7 @@ export async function seedCMS() {
     { iconName: "TrendingUp", title: "Talent Acquisition", desc: "Build your dream team with strategic talent pipelines and employer branding support.", order: 5 },
     { iconName: "Briefcase", title: "Job Posting", desc: "Reach thousands of qualified candidates through our extensive network and platforms.", order: 6 },
   ];
-  servicesComp.forEach(item => batch.set(doc(collection(db, 'services_companies')), { ...item, createdAt: Timestamp.now() }));
+  if (emptyFlags.services_companies) servicesComp.forEach(item => batch.set(doc(collection(db, 'services_companies')), { ...item, createdAt: Timestamp.now() }));
 
   // 4. TESTIMONIALS
   const testimonials = [
@@ -384,7 +432,7 @@ export async function seedCMS() {
     { name: "Omar Khalil", role: "Marketing Director", rating: 5, text: "The career coaching sessions gave me incredible clarity and direction. I received a promotion within 6 months of working with Career Bridge.", order: 3 },
     { name: "Nour Youssef", role: "UX Designer at Noon", rating: 5, text: "My LinkedIn profile views jumped 400% after their optimization service. I get headhunted regularly now. Best investment in my career.", order: 4 },
   ];
-  testimonials.forEach(item => batch.set(doc(collection(db, 'testimonials')), { ...item, createdAt: Timestamp.now() }));
+  if (emptyFlags.testimonials) testimonials.forEach(item => batch.set(doc(collection(db, 'testimonials')), { ...item, createdAt: Timestamp.now() }));
 
   // 5. FAQS
   const faqs = [
@@ -395,7 +443,7 @@ export async function seedCMS() {
     { q: "Is uploading my CV free?", a: "Yes, submitting your CV through our platform is completely free. Our team will review your profile and reach out when matching opportunities arise.", order: 5 },
     { q: "How long does the recruitment process typically take?", a: "Depending on the seniority and complexity of the role, our recruitment process typically takes 2–4 weeks from job briefing to offer stage.", order: 6 },
   ];
-  faqs.forEach(item => batch.set(doc(collection(db, 'faqs')), { ...item, createdAt: Timestamp.now() }));
+  if (emptyFlags.faqs) faqs.forEach(item => batch.set(doc(collection(db, 'faqs')), { ...item, createdAt: Timestamp.now() }));
 
   // 6. STEPS
   const steps = [
@@ -406,7 +454,7 @@ export async function seedCMS() {
     { num: "05", title: "Get Matched", desc: "We connect you with top companies actively looking for your profile.", order: 5 },
     { num: "06", title: "Get Hired", desc: "Accept your offer and start your new chapter with full confidence.", order: 6 },
   ];
-  steps.forEach(item => batch.set(doc(collection(db, 'steps')), { ...item, createdAt: Timestamp.now() }));
+  if (emptyFlags.steps) steps.forEach(item => batch.set(doc(collection(db, 'steps')), { ...item, createdAt: Timestamp.now() }));
 
   await batch.commit();
 }
