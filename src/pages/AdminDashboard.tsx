@@ -845,7 +845,7 @@ export default function AdminDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {filteredJobs.map(job => (
+                        {pagedJobs.map(job => (
                           <tr key={job.id} className="hover:bg-white/80 transition-colors group">
                             <td className="px-5 py-4 font-semibold text-gray-900 text-sm">{job.title}</td>
                             <td className="px-5 py-4 text-sm text-gray-600">{job.company}</td>
