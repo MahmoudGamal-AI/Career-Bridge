@@ -614,6 +614,69 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {!dataLoading && (
+                <div className="grid lg:grid-cols-3 gap-5">
+                  <div className="lg:col-span-2 bg-white border border-slate-200 rounded-3xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
+                    <div className="p-6 border-b border-slate-50 bg-[#F8FAFC]">
+                      <h3 className="font-bold text-gray-900 text-sm" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Applications (Last 6 Months)</h3>
+                    </div>
+                    <div className="p-4 h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={applicationsPerMonth}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                          <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748B' }} />
+                          <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#64748B' }} />
+                          <Tooltip />
+                          <Bar dataKey="applications" fill="#0F4C81" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-3xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
+                    <div className="p-6 border-b border-slate-50 bg-[#F8FAFC]">
+                      <h3 className="font-bold text-gray-900 text-sm" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Candidate Status</h3>
+                    </div>
+                    <div className="p-4 h-64">
+                      {statusBreakdown.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-sm text-gray-400">No candidate data yet</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={statusBreakdown} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75} paddingAngle={3}>
+                              {statusBreakdown.map(entry => (
+                                <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || '#94A3B8'} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+                  <div className="lg:col-span-3 bg-white border border-slate-200 rounded-3xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden">
+                    <div className="p-6 border-b border-slate-50 bg-[#F8FAFC]">
+                      <h3 className="font-bold text-gray-900 text-sm" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Jobs by Category</h3>
+                    </div>
+                    <div className="p-4 h-56">
+                      {jobsByCategory.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-sm text-gray-400">No jobs data yet</div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={jobsByCategory}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748B' }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#64748B' }} />
+                            <Tooltip />
+                            <Bar dataKey="count" fill="#F59E0B" radius={[6, 6, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="grid lg:grid-cols-2 gap-5">
                 <div className="bg-white border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] rounded-3xl border border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] overflow-hidden hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-all duration-300">
                   <div className="p-6 border-b border-slate-50 bg-[#F8FAFC]">
