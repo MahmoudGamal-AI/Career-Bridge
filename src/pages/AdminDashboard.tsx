@@ -765,7 +765,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {filteredCandidates.map(c => (
+                      {pagedCandidates.map(c => (
                         <tr key={c.id} className="hover:bg-white/80 transition-colors group">
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
